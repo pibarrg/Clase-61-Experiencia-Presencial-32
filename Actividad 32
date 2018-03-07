@@ -1,0 +1,338 @@
+>> psql
+psql (9.6.4, server 10.3)
+WARNING: psql major version 9.6, server major version 10.
+         Some psql features might not work.
+Type "help" for help.
+
+patricioibarra=# create database pintagram
+patricioibarra-# ;
+CREATE DATABASE
+patricioibarra=# \c pintagram;
+psql (9.6.4, server 10.3)
+WARNING: psql major version 9.6, server major version 10.
+         Some psql features might not work.
+You are now connected to database "pintagram" as user "patricioibarra".
+pintagram=# create table users (id serial primary key, name varchar(50));
+CREATE TABLE
+pintagram=# \d users
+                                Table "public.users"
+ Column |         Type          |                     Modifiers
+--------+-----------------------+----------------------------------------------------
+ id     | integer               | not null default nextval('users_id_seq'::regclass)
+ name   | character varying(50) |
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+
+pintagram=# create table tags (id serial primary key, name varchar(50));
+CREATE TABLE
+pintagram=# \d tags
+                                Table "public.tags"
+ Column |         Type          |                     Modifiers
+--------+-----------------------+---------------------------------------------------
+ id     | integer               | not null default nextval('tags_id_seq'::regclass)
+ name   | character varying(50) |
+Indexes:
+    "tags_pkey" PRIMARY KEY, btree (id)
+
+pintagram=# create table images (id serial primary key, user_id integer references users(id), name varchar(50));
+CREATE TABLE
+pintagram=# \d
+                 List of relations
+ Schema |     Name      |   Type   |     Owner
+--------+---------------+----------+----------------
+ public | images        | table    | patricioibarra
+ public | images_id_seq | sequence | patricioibarra
+ public | tags          | table    | patricioibarra
+ public | tags_id_seq   | sequence | patricioibarra
+ public | users         | table    | patricioibarra
+ public | users_id_seq  | sequence | patricioibarra
+(6 rows)
+
+pintagram=# \d images
+                                 Table "public.images"
+ Column  |         Type          |                      Modifiers
+---------+-----------------------+-----------------------------------------------------
+ id      | integer               | not null default nextval('images_id_seq'::regclass)
+ user_id | integer               |
+ name    | character varying(50) |
+Indexes:
+    "images_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "images_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+
+pintagram=# create table likes (id serial primary key, user_id integer references users(id), image_id integer references images(id));
+CREATE TABLE
+pintagram=# \d likes
+                          Table "public.likes"
+  Column  |  Type   |                     Modifiers
+----------+---------+----------------------------------------------------
+ id       | integer | not null default nextval('likes_id_seq'::regclass)
+ user_id  | integer |
+ image_id | integer |
+Indexes:
+    "likes_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "likes_image_id_fkey" FOREIGN KEY (image_id) REFERENCES images(id)
+    "likes_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+
+pintagram=# create table tag_images (id integer primary key, tag_id integer references tags(id), image_id integer references images(id));
+CREATE TABLE
+pintagram=# \d tag_images
+   Table "public.tag_images"
+  Column  |  Type   | Modifiers
+----------+---------+-----------
+ id       | integer | not null
+ tag_id   | integer |
+ image_id | integer |
+Indexes:
+    "tag_images_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "tag_images_image_id_fkey" FOREIGN KEY (image_id) REFERENCES images(id)
+    "tag_images_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id)
+
+pintagram=# drop table tag_images
+pintagram-# ;
+DROP TABLE
+pintagram=# drop table likes;
+DROP TABLE
+pintagram=# create table likes (user_id integer references users(id), image_id integer references images(id), primary key (user_id, image_id));
+CREATE TABLE
+pintagram=# \d likes
+      Table "public.likes"
+  Column  |  Type   | Modifiers
+----------+---------+-----------
+ user_id  | integer | not null
+ image_id | integer | not null
+Indexes:
+    "likes_pkey" PRIMARY KEY, btree (user_id, image_id)
+Foreign-key constraints:
+    "likes_image_id_fkey" FOREIGN KEY (image_id) REFERENCES images(id)
+    "likes_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+
+pintagram=# create table tag_images (tag_id integer references tags(id), image_id integer references images(id), primary key (tag_id, image_id));
+CREATE TABLE
+pintagram=# \d tag_images
+   Table "public.tag_images"
+  Column  |  Type   | Modifiers
+----------+---------+-----------
+ tag_id   | integer | not null
+ image_id | integer | not null
+Indexes:
+    "tag_images_pkey" PRIMARY KEY, btree (tag_id, image_id)
+Foreign-key constraints:
+    "tag_images_image_id_fkey" FOREIGN KEY (image_id) REFERENCES images(id)
+    "tag_images_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id)
+
+pintagram=# INSERT INTO users (name) values ('Patricio');
+INSERT 0 1
+pintagram=# select * from users;
+ id |   name
+----+----------
+  1 | Patricio
+(1 row)
+
+pintagram=# INSERT INTO users (name) values ('Denisse');
+INSERT 0 1
+pintagram=# select * from users;
+ id |   name
+----+----------
+  1 | Patricio
+  2 | Denisse
+(2 rows)
+
+pintagram=# INSERT INTO images (user_id, name) values (1, 'img1'), (1, 'img2'), (2, 'img3'), (2, 'img4');
+INSERT 0 4
+pintagram=# select * from images;
+ id | user_id | name
+----+---------+------
+  1 |       1 | img1
+  2 |       1 | img2
+  3 |       2 | img3
+  4 |       2 | img4
+(4 rows)
+
+pintagram=# INSERT INTO users (name) values ('Federico');
+INSERT 0 1
+pintagram=# INSERT INTO likes (user_id, image_id) values (1, 1), (2, 1), (3, 1), (4, 1), (1, 2), (2, 2), (3, 2), (4, 2);
+ERROR:  insert or update on table "likes" violates foreign key constraint "likes_user_id_fkey"
+DETAIL:  Key (user_id)=(4) is not present in table "users".
+pintagram=# INSERT INTO likes (user_id, image_id) values (1, 1), (2, 1), (3, 1), (1, 2), (2, 2), (3, 2);
+INSERT 0 6
+pintagram-# ;
+ user_id | image_id
+---------+----------
+       1 |        1
+       2 |        1
+       3 |        1
+       1 |        2
+       2 |        2
+       3 |        2
+(6 rows)
+
+pintagram=# INSERT INTO images (user_id, name) values (3, 'img5'), (3, 'img6');
+INSERT 0 2
+pintagram=# select * from images;
+ id | user_id | name
+----+---------+------
+  1 |       1 | img1
+  2 |       1 | img2
+  3 |       2 | img3
+  4 |       2 | img4
+  5 |       3 | img5
+  6 |       3 | img6
+(6 rows)
+
+pintagram=# INSERT INTO likes (user_id, image_id) values (3, 3), (3, 4), (3, 5), (3, 6);
+INSERT 0 4
+pintagram=# select * from likes;
+ user_id | image_id
+---------+----------
+       1 |        1
+       2 |        1
+       3 |        1
+       1 |        2
+       2 |        2
+       3 |        2
+       3 |        3
+       3 |        4
+       3 |        5
+       3 |        6
+(10 rows)
+
+pintagram=# INSERT INTO likes (user_id, image_id) values (1, 3), (1, 4), (1, 5), (1, 6);
+INSERT 0 4
+pintagram=# INSERT INTO likes (user_id, image_id) values (2, 3), (2, 4), (2, 5), (2, 6);
+INSERT 0 4
+pintagram=# select * from likes;
+ user_id | image_id
+---------+----------
+       1 |        1
+       2 |        1
+       3 |        1
+       1 |        2
+       2 |        2
+       3 |        2
+       3 |        3
+       3 |        4
+       3 |        5
+       3 |        6
+       1 |        3
+       1 |        4
+       1 |        5
+       1 |        6
+       2 |        3
+       2 |        4
+       2 |        5
+       2 |        6
+(18 rows)
+
+pintagram=# select * from likes order by image_id;
+ user_id | image_id
+---------+----------
+       2 |        1
+       1 |        1
+       3 |        1
+       1 |        2
+       2 |        2
+       3 |        2
+       3 |        3
+       1 |        3
+       2 |        3
+       3 |        4
+       2 |        4
+       1 |        4
+       1 |        5
+       3 |        5
+       2 |        5
+       2 |        6
+       3 |        6
+       1 |        6
+(18 rows)
+
+pintagram=# INSERT INTO tags (name) values ('tag1'), ('tag2'), ('tag3'), ('tag4'), ('tag5'), ('tag6'), ('tag7'), ('tag8');
+INSERT 0 8
+pintagram=# select * from tags;
+ id | name
+----+------
+  1 | tag1
+  2 | tag2
+  3 | tag3
+  4 | tag4
+  5 | tag5
+  6 | tag6
+  7 | tag7
+  8 | tag8
+(8 rows)
+
+pintagram=# INSERT INTO tag_images (tag_id, image_id) values (1, 1), (2, 1), (3, 1);
+INSERT 0 3
+pintagram=# INSERT INTO tag_images (tag_id, image_id) values (1, 2), (2, 2), (3, 2);
+INSERT 0 3
+pintagram=# INSERT INTO tag_images (tag_id, image_id) values (1, 3), (2, 3), (3, 3);
+INSERT 0 3
+pintagram=# INSERT INTO tag_images (tag_id, image_id) values (1, 4), (2, 4), (3, 4);
+INSERT 0 3
+pintagram=# INSERT INTO tag_images (tag_id, image_id) values (1, 5), (2, 5), (3, 5);
+INSERT 0 3
+pintagram=# INSERT INTO tag_images (tag_id, image_id) values (1, 6), (2, 6), (3, 6);
+INSERT 0 3
+pintagram=# select * from tag_images;
+ tag_id | image_id
+--------+----------
+      1 |        1
+      2 |        1
+      3 |        1
+      1 |        2
+      2 |        2
+      3 |        2
+      1 |        3
+      2 |        3
+      3 |        3
+      1 |        4
+      2 |        4
+      3 |        4
+      1 |        5
+      2 |        5
+      3 |        5
+      1 |        6
+      2 |        6
+      3 |        6
+(18 rows)
+
+pintagram=# SELECT images.name, count(likes.image_id)
+pintagram-# FROM images, likes
+pintagram-# WHERE images.id = likes.image_id
+pintagram-# GROUP BY images.name;
+ name | count
+------+-------
+ img2 |     3
+ img1 |     3
+ img5 |     3
+ img3 |     3
+ img6 |     3
+ img4 |     3
+(6 rows)
+
+pintagram=# SELECT users.name, images.name
+pintagram-# FROM users, images
+pintagram-# WHERE users.id = images.user_id;
+   name   | name
+----------+------
+ Patricio | img1
+ Patricio | img2
+ Denisse  | img3
+ Denisse  | img4
+ Federico | img5
+ Federico | img6
+(6 rows)
+
+pintagram=# SELECT tags.name, count(tag_images.image_id)
+pintagram-# FROM tags, tag_images
+pintagram-# WHERE tags.id = tag_images.tag_id
+pintagram-# GROUP BY tags.name;
+ name | count
+------+-------
+ tag1 |     6
+ tag2 |     6
+ tag3 |     6
+(3 rows)
